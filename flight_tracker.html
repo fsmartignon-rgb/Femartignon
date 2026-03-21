@@ -458,6 +458,38 @@
     const API_BASE = "https://api.aviationstack.com/v1/flights";
     const MAX_RECENT = 5;
 
+    // Airport coordinates lookup (IATA → [lat, lng])
+    const AIRPORT_COORDS = {
+      ATL:[33.6407,-84.4277],JFK:[40.6413,-73.7781],LAX:[33.9425,-118.4081],ORD:[41.9742,-87.9073],
+      DFW:[32.8998,-97.0403],DEN:[39.8561,-104.6737],SFO:[37.6213,-122.379],SEA:[47.4502,-122.3088],
+      LAS:[36.08,-115.1523],MCO:[28.4312,-81.308],CLT:[35.214,-80.9431],MIA:[25.7959,-80.287],
+      PHX:[33.4373,-112.0078],EWR:[40.6895,-74.1745],IAH:[29.9902,-95.3368],MSP:[44.8848,-93.2223],
+      BOS:[42.3656,-71.0096],DTW:[42.2124,-83.3534],FLL:[26.0726,-80.1527],BWI:[39.1754,-76.6684],
+      SLC:[40.7884,-111.9778],DCA:[38.8512,-77.0402],SAN:[32.7338,-117.1933],IAD:[38.9531,-77.4565],
+      TPA:[27.9755,-82.5332],PDX:[45.5898,-122.5951],HNL:[21.3187,-157.9224],STL:[38.7487,-90.37],
+      AUS:[30.1975,-97.6664],BNA:[36.1264,-86.6774],MCI:[39.2976,-94.7139],RDU:[35.8776,-78.7875],
+      SJC:[37.3626,-121.929],SMF:[38.6954,-121.5908],CLE:[41.4117,-81.8498],OAK:[37.7213,-122.2208],
+      PIT:[40.4915,-80.2329],IND:[39.7173,-86.2944],CMH:[39.998,-82.8919],SAT:[29.5337,-98.4698],
+      MKE:[42.9472,-87.8966],RSW:[26.5362,-81.7552],SNA:[33.6757,-117.8683],
+      LHR:[51.47,-0.4543],LGW:[51.1537,-0.1821],CDG:[49.0097,2.5479],AMS:[52.3105,4.7683],
+      FRA:[50.0379,8.5622],MAD:[40.4983,-3.5676],BCN:[41.2974,2.0833],FCO:[41.8003,12.2389],
+      MXP:[45.63,8.7231],MUC:[48.3538,11.775],ZRH:[47.4647,8.5492],IST:[41.2753,28.7519],
+      DXB:[25.2532,55.3657],DOH:[25.2731,51.6082],AUH:[24.4331,54.6511],SIN:[1.3644,103.9915],
+      HKG:[22.308,113.9185],NRT:[35.7647,140.3864],HND:[35.5494,139.7798],ICN:[37.4602,126.4407],
+      PEK:[40.0799,116.6031],PVG:[31.1443,121.8083],BKK:[13.6899,100.7501],KUL:[2.7456,101.7099],
+      DEL:[28.5562,77.1],BOM:[19.0896,72.8656],SYD:[-33.9461,151.1772],MEL:[-37.6733,144.8433],
+      AKL:[-37.0082,174.792],GRU:[-23.4356,-46.4731],GIG:[-22.8099,-43.2506],EZE:[-34.8222,-58.5358],
+      SCL:[-33.393,-70.7858],BOG:[4.7016,-74.1469],LIM:[-12.0219,-77.1143],MEX:[19.4363,-99.0721],
+      CUN:[21.0365,-86.877],PTY:[9.0714,-79.3835],HAV:[22.9892,-82.4091],SJU:[18.4394,-66.0018],
+      YYZ:[43.6777,-79.6248],YVR:[49.1947,-123.1792],YUL:[45.4706,-73.7408],YOW:[45.3225,-75.6692],
+      CPT:[-33.9715,18.6021],JNB:[-26.1392,28.246],NBO:[-1.3192,36.9278],CAI:[30.1219,31.4056],
+      ADD:[8.9779,38.7993],CMN:[33.3675,-7.5898],LOS:[6.5774,3.3211],ACC:[5.6052,-0.1668],
+      DAR:[-6.8781,39.2026],MRU:[-20.4302,57.6836],
+      CGH:[-23.6261,-46.6564],BSB:[-15.8711,-47.9186],CNF:[-19.6244,-43.9719],SSA:[-12.9086,-38.3225],
+      REC:[-8.1266,-34.923],CWB:[-25.5285,-49.1758],POA:[-29.9944,-51.1714],FOR:[-3.7763,-38.5326],
+      BEL:[-1.3796,-48.4764],VCP:[-23.0074,-47.1345]
+    };
+
     // ============================================================
     // SEARCH BUTTON STATE
     // ============================================================
@@ -503,6 +535,11 @@
       const airline = raw.airline || {};
       const flight = raw.flight || {};
 
+      const depIata = safe(depTime.iata, '');
+      const arrIata = safe(arrTime.iata, '');
+      const depCoords = AIRPORT_COORDS[depIata] || null;
+      const arrCoords = AIRPORT_COORDS[arrIata] || null;
+
       return {
         flightNumber: safe(flight.iata, safe(flight.icao, '—')),
         airlineName: safe(airline.name, 'Unknown Airline'),
@@ -510,24 +547,24 @@
         status: normalizeStatus(safe(raw.flight_status, 'unknown')),
         statusRaw: safe(raw.flight_status, 'unknown'),
         departure: {
-          iata: safe(depTime.iata, '—'),
+          iata: depIata || '—',
           city: safe(depTime.airport, '—'),
           scheduled: formatDateTime(depTime.scheduled),
           estimated: formatDateTime(depTime.estimated),
           actual: formatDateTime(depTime.actual),
           timezone: safe(depTime.timezone, ''),
-          lat: depTime.latitude || null,
-          lng: depTime.longitude || null
+          lat: depCoords ? depCoords[0] : null,
+          lng: depCoords ? depCoords[1] : null
         },
         arrival: {
-          iata: safe(arrTime.iata, '—'),
+          iata: arrIata || '—',
           city: safe(arrTime.airport, '—'),
           scheduled: formatDateTime(arrTime.scheduled),
           estimated: formatDateTime(arrTime.estimated),
           actual: formatDateTime(arrTime.actual),
           timezone: safe(arrTime.timezone, ''),
-          lat: arrTime.latitude || null,
-          lng: arrTime.longitude || null
+          lat: arrCoords ? arrCoords[0] : null,
+          lng: arrCoords ? arrCoords[1] : null
         }
       };
     }
@@ -573,7 +610,7 @@
     // ============================================================
     function getAirlineLogo(iataCode) {
       if (!iataCode) return null;
-      return `https://content.airhex.com/content/logos/airlines_${iataCode.toLowerCase()}_200_200_s.png`;
+      return `https://content.airhex.com/content/logos/airlines_${iataCode.toUpperCase()}_200_200_s.png`;
     }
 
     // ============================================================
@@ -584,7 +621,7 @@
       const logoUrl = getAirlineLogo(data.airlineIata);
 
       const logoHTML = logoUrl
-        ? `<img class="airline-logo" src="${logoUrl}" alt="${data.airlineName}" onerror="this.outerHTML='<div class=\\'logo-fallback\\'>✈</div>'">`
+        ? `<img class="airline-logo" src="${logoUrl}" alt="${data.airlineName}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="logo-fallback" style="display:none">✈</div>`
         : `<div class="logo-fallback">✈</div>`;
 
       const depEstOrActual = data.departure.actual !== '—' ? data.departure.actual
