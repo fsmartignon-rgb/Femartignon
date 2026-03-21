@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlightTrack — Live Flight Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- ===== STYLES ===== -->
+  <style>
+    /* --- Reset & Base --- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #21262d;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --red:       #f85149;
+      --orange:    #d29922;
+      --purple:    #a371f7;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* --- Navbar --- */
+    .navbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    .navbar .tagline {
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-left: 1px solid var(--border);
+      padding-left: 12px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+      margin-left: auto;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* --- Main Layout --- */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 16px;
+    }
+
+    /* --- Search Section --- */
+    .search-section {
+      margin-bottom: 40px;
+    }
+
+    .search-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input::placeholder { color: var(--muted); }
+
+    .search-input:focus { border-color: var(--accent); }
+
+    .search-btn {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .search-btn:hover { opacity: 0.85; }
+
+    /* --- Result Card --- */
+    #result-panel { display: none; margin-bottom: 40px; }
+
+    .flight-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    /* Card header bar */
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .flight-id {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .airline-name {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Status badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .badge.on-time  { background: rgba(63,185,80,.15); color: var(--green); }
+    .badge.delayed  { background: rgba(210,153,34,.15); color: var(--orange); }
+    .badge.cancelled{ background: rgba(248,81,73,.15);  color: var(--red); }
+    .badge.landed   { background: rgba(88,166,255,.15); color: var(--accent); }
+    .badge.boarding { background: rgba(163,113,247,.15);color: var(--purple); }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Route / progress bar */
+    .route-section {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .route-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .airport-block { text-align: center; min-width: 70px; }
+
+    .iata {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .city {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .progress-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .progress-bar-bg {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.4s;
+    }
+
+    .plane-icon {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.1rem;
+      transition: left 0.4s;
+    }
+
+    .route-times {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Details grid */
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-cell {
+      padding: 14px 20px;
+      border-right: 1px solid var(--border);
+    }
+
+    .detail-cell:last-child { border-right: none; }
+
+    .detail-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    /* Live stats strip */
+    .stats-strip {
+      display: flex;
+      gap: 0;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat {
+      flex: 1;
+      padding: 12px 20px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat:last-child { border-right: none; }
+
+    .stat-icon { font-size: 1rem; }
+
+    .stat-info { display: flex; flex-direction: column; }
+
+    .stat-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .stat-value { font-size: 0.9rem; font-weight: 600; }
+
+    /* Timeline */
+    .timeline {
+      display: flex;
+      justify-content: space-between;
+      padding: 18px 20px;
+      position: relative;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      top: 28px;
+      left: 50px;
+      right: 50px;
+      height: 2px;
+      background: var(--border);
+    }
+
+    .tl-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tl-circle {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--border);
+      border: 2px solid var(--bg);
+    }
+
+    .tl-circle.done { background: var(--accent); }
+    .tl-circle.active { background: var(--green); box-shadow: 0 0 0 3px rgba(63,185,80,.3); }
+
+    .tl-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-weight: 500;
+      text-align: center;
+    }
+
+    /* --- No-result message --- */
+    .no-result {
+      text-align: center;
+      padding: 32px;
+      color: var(--muted);
+    }
+
+    .no-result .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .no-result p { font-size: 0.95rem; }
+
+    /* --- Flights Board (departure board) --- */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .board {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .board-head {
+      display: grid;
+      grid-template-columns: 100px 1fr 1fr 90px 80px 80px;
+      padding: 10px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .board-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 1fr 90px 80px 80px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 0.875rem;
+    }
+
+    .board-row:last-child { border-bottom: none; }
+
+    .board-row:hover { background: var(--surface2); }
+
+    .board-flight-num {
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+
+    .board-route { color: var(--muted); font-size: 0.8rem; }
+
+    /* --- Responsive --- */
+    @media (max-width: 600px) {
+      .board-head,
+      .board-row {
+        grid-template-columns: 90px 1fr 1fr 80px;
+      }
+
+      /* hide Gate and Terminal columns on mobile */
+      .board-head .col-gate,
+      .board-head .col-terminal,
+      .board-row .col-gate,
+      .board-row .col-terminal {
+        display: none;
+      }
+
+      .stats-strip { flex-wrap: wrap; }
+      .stat { min-width: 50%; border-right: none; border-bottom: 1px solid var(--border); }
+
+      .details-grid { grid-template-columns: repeat(2, 1fr); }
+      .detail-cell { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <span class="logo">✈ FlightTrack</span>
+    <span class="tagline">Simulator — Mock Data</span>
+    <span class="live-dot" title="Live"></span>
+  </nav>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <div class="container">
+
+    <!-- ===== SEARCH SECTION ===== -->
+    <section class="search-section">
+      <div class="search-label">Track a flight</div>
+      <div class="search-row">
+        <input
+          id="search-input"
+          class="search-input"
+          type="text"
+          placeholder="Enter flight number (e.g. AA123)"
+          maxlength="10"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="characters"
+        />
+        <button class="search-btn" onclick="searchFlight()">Search</button>
+      </div>
+    </section>
+
+    <!-- ===== RESULT PANEL ===== -->
+    <!--
+      Hidden by default (display:none via CSS).
+      searchFlight() / renderFlightCard() populates and shows this.
+    -->
+    <section id="result-panel"></section>
+
+    <!-- ===== DEPARTURE BOARD ===== -->
+    <section>
+      <div class="section-title">All flights — Departure board</div>
+      <div class="board">
+        <div class="board-head">
+          <span>Flight</span>
+          <span>From</span>
+          <span>To</span>
+          <span>Status</span>
+          <span class="col-gate">Gate</span>
+          <span class="col-terminal">Terminal</span>
+        </div>
+        <!-- Board rows injected by renderFlightsBoard() -->
+        <div id="board-body"></div>
+      </div>
+    </section>
+
+  </div><!-- /container -->
+
+
+  <!-- ===== MOCK DATA ===== -->
+  <!--
+    Five mock flights. Each object mirrors what a real flight API would return.
+    Fields:
+      flightNumber  — unique identifier used for search
+      airline       — carrier name
+      status        — "On Time" | "Boarding" | "Delayed" | "Landed" | "Cancelled"
+      origin / destination — { city, iata, time } local departure / arrival times
+      aircraft      — aircraft model
+      gate          — boarding gate
+      terminal      — airport terminal
+      progress      — 0-100 percentage of flight completed (drives progress bar)
+      altitude      — cruising altitude in feet (shown only when airborne)
+      speed         — ground speed in knots
+      timeline      — which milestones are complete { scheduled, boarding, departed, arrived }
+  -->
+  <script>
+    const FLIGHTS = [
+      {
+        flightNumber: "AA123",
+        airline:      "American Airlines",
+        status:       "On Time",
+        origin:       { city: "New York",    iata: "JFK", time: "08:30" },
+        destination:  { city: "Los Angeles", iata: "LAX", time: "11:45" },
+        aircraft:     "Boeing 737-800",
+        gate:         "B22",
+        terminal:     "T4",
+        progress:     42,
+        altitude:     "35,000 ft",
+        speed:        "478 kts",
+        timeline:     { scheduled: true, boarding: true, departed: true, arrived: false }
+      },
+      {
+        flightNumber: "UA456",
+        airline:      "United Airlines",
+        status:       "Delayed",
+        origin:       { city: "Chicago",   iata: "ORD", time: "10:00" },
+        destination:  { city: "Miami",     iata: "MIA", time: "14:20" },
+        aircraft:     "Airbus A320",
+        gate:         "F11",
+        terminal:     "T1",
+        progress:     0,
+        altitude:     "—",
+        speed:        "0 kts",
+        timeline:     { scheduled: true, boarding: false, departed: false, arrived: false }
+      },
+      {
+        flightNumber: "DL789",
+        airline:      "Delta Air Lines",
+        status:       "Boarding",
+        origin:       { city: "Atlanta",  iata: "ATL", time: "13:15" },
+        destination:  { city: "Seattle",  iata: "SEA", time: "16:50" },
+        aircraft:     "Boeing 757-200",
+        gate:         "A05",
+        terminal:     "T3",
+        progress:     0,
+        altitude:     "—",
+        speed:        "0 kts",
+        timeline:     { scheduled: true, boarding: true, departed: false, arrived: false }
+      },
+      {
+        flightNumber: "SW321",
+        airline:      "Southwest Airlines",
+        status:       "Landed",
+        origin:       { city: "Dallas",      iata: "DAL", time: "07:00" },
+        destination:  { city: "Denver",      iata: "DEN", time: "09:10" },
+        aircraft:     "Boeing 737 MAX 8",
+        gate:         "C14",
+        terminal:     "T2",
+        progress:     100,
+        altitude:     "Landed",
+        speed:        "0 kts",
+        timeline:     { scheduled: true, boarding: true, departed: true, arrived: true }
+      },
+      {
+        flightNumber: "BA007",
+        airline:      "British Airways",
+        status:       "Cancelled",
+        origin:       { city: "London",      iata: "LHR", time: "14:30" },
+        destination:  { city: "New York",    iata: "JFK", time: "17:45" },
+        aircraft:     "Boeing 777-300ER",
+        gate:         "—",
+        terminal:     "T5",
+        progress:     0,
+        altitude:     "—",
+        speed:        "0 kts",
+        timeline:     { scheduled: true, boarding: false, departed: false, arrived: false }
+      }
+    ];
+
+
+    // ===== HELPER: Map status string to CSS class name =====
+    function statusClass(status) {
+      const map = {
+        "On Time":  "on-time",
+        "Delayed":  "delayed",
+        "Cancelled":"cancelled",
+        "Landed":   "landed",
+        "Boarding": "boarding"
+      };
+      return map[status] || "on-time";
+    }
+
+
+    // ===== RENDER FLIGHT DETAIL CARD =====
+    function renderFlightCard(flight) {
+      const cls = statusClass(flight.status);
+
+      // Build timeline step HTML
+      function tlStep(label, state) {
+        const cls = state === 'active' ? 'active' : state === 'done' ? 'done' : '';
+        return `<div class="tl-step">
+          <div class="tl-circle ${cls}"></div>
+          <span class="tl-label">${label}</span>
+        </div>`;
+      }
+
+      const tl = flight.timeline;
+      // Determine active step (the first incomplete one that has a predecessor done)
+      function tlState(key, prevKey) {
+        if (tl[key]) return 'done';
+        if (prevKey === null || tl[prevKey]) return 'active';
+        return '';
+      }
+
+      const tlScheduled = tlState('scheduled', null);
+      const tlBoarding  = tlState('boarding',  'scheduled');
+      const tlDeparted  = tlState('departed',  'boarding');
+      const tlArrived   = tlState('arrived',   'departed');
+
+      const cardHTML = `
+        <div class="flight-card">
+
+          <!-- Card header: flight number + status badge -->
+          <div class="card-header">
+            <div>
+              <div class="flight-id">${flight.flightNumber}</div>
+              <div class="airline-name">${flight.airline}</div>
+            </div>
+            <span class="badge ${cls}">
+              <span class="badge-dot"></span>
+              ${flight.status}
+            </span>
+          </div>
+
+          <!-- Route + progress bar -->
+          <div class="route-section">
+            <div class="route-row">
+              <div class="airport-block">
+                <div class="iata">${flight.origin.iata}</div>
+                <div class="city">${flight.origin.city}</div>
+              </div>
+
+              <div class="progress-wrap">
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" style="width:${flight.progress}%"></div>
+                  <span class="plane-icon" style="left:${Math.min(Math.max(flight.progress, 3), 97)}%">✈</span>
+                </div>
+                <div class="route-times">
+                  <span>${flight.origin.time}</span>
+                  <span>${flight.progress}% complete</span>
+                  <span>${flight.destination.time}</span>
+                </div>
+              </div>
+
+              <div class="airport-block">
+                <div class="iata">${flight.destination.iata}</div>
+                <div class="city">${flight.destination.city}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Details grid: departure, arrival, aircraft, gate, terminal -->
+          <div class="details-grid">
+            <div class="detail-cell">
+              <div class="detail-label">Departure</div>
+              <div class="detail-value">${flight.origin.time}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Arrival</div>
+              <div class="detail-value">${flight.destination.time}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Aircraft</div>
+              <div class="detail-value">${flight.aircraft}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Gate</div>
+              <div class="detail-value">${flight.gate}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Terminal</div>
+              <div class="detail-value">${flight.terminal}</div>
+            </div>
+          </div>
+
+          <!-- Live stats strip: altitude, speed -->
+          <div class="stats-strip">
+            <div class="stat">
+              <span class="stat-icon">📡</span>
+              <div class="stat-info">
+                <span class="stat-label">Altitude</span>
+                <span class="stat-value">${flight.altitude}</span>
+              </div>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">💨</span>
+              <div class="stat-info">
+                <span class="stat-label">Speed</span>
+                <span class="stat-value">${flight.speed}</span>
+              </div>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">🛤️</span>
+              <div class="stat-info">
+                <span class="stat-label">Progress</span>
+                <span class="stat-value">${flight.progress}%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Timeline: Scheduled → Boarding → Departed → Arrived -->
+          <div class="timeline">
+            ${tlStep('Scheduled', tlScheduled)}
+            ${tlStep('Boarding',  tlBoarding)}
+            ${tlStep('Departed',  tlDeparted)}
+            ${tlStep('Arrived',   tlArrived)}
+          </div>
+
+        </div>
+      `;
+
+      const panel = document.getElementById('result-panel');
+      panel.innerHTML = cardHTML;
+      panel.style.display = 'block';
+
+      // Smooth scroll to result
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+
+    // ===== RENDER NO-RESULT MESSAGE =====
+    function renderNoResult(query) {
+      const panel = document.getElementById('result-panel');
+      panel.innerHTML = `
+        <div class="no-result">
+          <div class="icon">🔍</div>
+          <p>No flight found for <strong>"${query}"</strong>.</p>
+          <p style="margin-top:6px;font-size:0.8rem;">Try: AA123 · UA456 · DL789 · SW321 · BA007</p>
+        </div>
+      `;
+      panel.style.display = 'block';
+    }
+
+
+    // ===== SEARCH FLIGHT =====
+    // Called by the Search button and on Enter key press.
+    // Looks up the query (case-insensitive) in FLIGHTS mock data.
+    function searchFlight() {
+      const input = document.getElementById('search-input');
+      const query = input.value.trim().toUpperCase();
+
+      if (!query) return;
+
+      const match = FLIGHTS.find(f => f.flightNumber === query);
+
+      if (match) {
+        renderFlightCard(match);
+      } else {
+        renderNoResult(query);
+      }
+    }
+
+
+    // ===== RENDER DEPARTURE BOARD =====
+    // Populates the bottom table with all 5 mock flights on page load.
+    // Clicking a row loads that flight's detail card.
+    function renderFlightsBoard() {
+      const body = document.getElementById('board-body');
+
+      body.innerHTML = FLIGHTS.map(f => {
+        const cls = statusClass(f.status);
+        return `
+          <div class="board-row" onclick="selectFromBoard('${f.flightNumber}')">
+            <span class="board-flight-num">${f.flightNumber}</span>
+            <span>${f.origin.city} <span class="board-route">(${f.origin.iata})</span></span>
+            <span>${f.destination.city} <span class="board-route">(${f.destination.iata})</span></span>
+            <span><span class="badge ${cls}" style="font-size:0.72rem;padding:3px 9px;">
+              <span class="badge-dot"></span>${f.status}
+            </span></span>
+            <span class="col-gate">${f.gate}</span>
+            <span class="col-terminal">${f.terminal}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+
+    // ===== SELECT FROM BOARD =====
+    // Clicking a departure board row populates the search input
+    // and renders the detail card for that flight.
+    function selectFromBoard(flightNumber) {
+      const input = document.getElementById('search-input');
+      input.value = flightNumber;
+      searchFlight();
+    }
+
+
+    // ===== ENTER KEY SUPPORT =====
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('search-input');
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') searchFlight();
+      });
+
+      // Populate the departure board immediately
+      renderFlightsBoard();
+    });
+  </script>
+
+</body>
+</html>
