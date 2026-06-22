@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>TAKEDA · GLOBAL INTELLIGENCE GRID — Cinematic Earth</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
@@ -179,10 +179,46 @@
   #cBL{bottom:70px;left:14px;border-right:0;border-top:0}
   #cBR{bottom:70px;right:14px;border-left:0;border-top:0}
 
+  /* ---------- Responsive · tablet & touch ---------- */
   @media (max-width:980px){
-    #leftpanel,#rightpanel{display:none}
-    .clockblock .utc{font-size:20px}
+    #leftpanel{display:none}            /* data layers/telemetry hidden on small screens */
+    .corner{display:none}
+    .brand .sub{display:none}
+    .brand .mark{width:30px;height:30px;font-size:16px}
+    .brand .name{font-size:12px;letter-spacing:2px}
+    #topbar{padding:10px 14px;gap:10px}
+    .sysstat{gap:6px}
+    .sysstat .pill{padding:6px 9px;font-size:9px}
+    .sysstat .pill:nth-child(n+3){display:none}   /* keep LINK + FPS */
+    /* node inspector becomes a bottom sheet, shown only when a node is selected */
+    #rightpanel{display:none;top:auto;left:10px;right:10px;bottom:108px;width:auto;align-items:stretch}
+    body.node-open #rightpanel{display:flex}
+    #rightpanel .card{width:100%}
+    .site-hero .city{font-size:19px}
+    #bottomdock{padding:10px 12px calc(12px + env(safe-area-inset-bottom));gap:10px}
+    .controls{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .controls::-webkit-scrollbar{display:none}
+    .btn{flex:none}
+    .clockblock .utc{font-size:19px}
+    .clockblock .date{font-size:8px;letter-spacing:1px}
+    body.showticker #bottomdock{margin-bottom:0}
   }
+  /* ---------- Responsive · phone ---------- */
+  @media (max-width:560px){
+    .brand .name{font-size:11px;letter-spacing:1.2px}
+    .sysstat .pill{font-size:0;gap:0;padding:7px}     /* dot-only status pills */
+    .sysstat .pill b,.sysstat .pill{line-height:0}
+    .sysstat .pill .dot{margin:0}
+    .btn{font-size:0;gap:0;padding:11px}              /* icon-only controls */
+    .btn svg{width:17px;height:17px}
+    .clockblock{min-width:0}
+    .clockblock .utc{font-size:17px;letter-spacing:1px}
+    body.showticker #ticker{height:24px}
+    .ticker-inner,.ticker-track .ti{font-size:9px}
+    #rightpanel{bottom:96px}
+  }
+  /* Pointer/touch: let the canvas own all gestures */
+  @media (pointer:coarse){ #app,canvas{touch-action:none} }
 </style>
 </head>
 <body class="showticker">
@@ -359,6 +395,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 // `useLegacyLights` (r150+) and is the default in r160 — set explicitly for intent.
 renderer.useLegacyLights = false;
 app.appendChild(renderer.domElement);
+renderer.domElement.style.touchAction='none';   // canvas owns touch gestures (mobile)
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(36, innerWidth/innerHeight, 0.01, 200);
@@ -887,7 +924,8 @@ function selectSite(s){
   document.getElementById('sStatus').textContent=s.status;
   document.getElementById('sCoord').textContent=s.lat.toFixed(2)+', '+s.lon.toFixed(2);
   document.getElementById('sLinks').textContent=s.links;
-  document.getElementById('sHint').innerHTML=`Node <b>${s.id.toUpperCase()}</b> selected · ${s.links} active links · cold-chain <b>nominal</b>. Double-click globe to deselect.`;
+  document.getElementById('sHint').innerHTML=`Node <b>${s.id.toUpperCase()}</b> selected · ${s.links} active links · cold-chain <b>nominal</b>. Double-tap globe to deselect.`;
+  document.body.classList.add('node-open');   // reveal mobile bottom sheet
   flyTo(s);
 }
 function deselect(){ selected=null;
@@ -895,6 +933,7 @@ function deselect(){ selected=null;
   document.getElementById('sCity').textContent='Global Network';
   document.getElementById('sCC').textContent=SITES.length+' NODES · 6 CONTINENTS';
   document.getElementById('sCoord').textContent='—'; document.getElementById('sLinks').textContent='—';
+  document.body.classList.remove('node-open');   // hide mobile bottom sheet
 }
 renderer.domElement.addEventListener('dblclick',deselect);
 
