@@ -530,7 +530,11 @@ nebula('rgba(20,120,160,0.30)',44,12,34,-60,0.22);
 /* ============================================================
    PHASE 2 TEXTURES  (real maps + procedural fallbacks)
    ============================================================ */
-const TEX = 'https://unpkg.com/three-globe@2.31.0/example/img/';
+const CDNS = [   // resilient fallback chain — first reachable host wins
+  'https://unpkg.com/three-globe@2.31.0/example/img/',
+  'https://cdn.jsdelivr.net/npm/three-globe@2.31.0/example/img/',
+  'https://cdn.statically.io/gh/vasturiano/three-globe/master/example/img/'
+];
 const tl = new THREE.TextureLoader(); tl.crossOrigin='anonymous';
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
@@ -539,18 +543,22 @@ const bar=document.getElementById('loadBar'), lstat=document.getElementById('loa
 function tick(name){ loaded++; if(bar) bar.style.width=Math.round(loaded/total*100)+'%';
   if(lstat) lstat.textContent='LOADED · '+name.toUpperCase(); }
 
-function load(url, fallback){
+// try each CDN in turn; fall back to a procedural texture only if all fail
+function loadChain(file, fallback, linear){
+  const cs = linear ? THREE.NoColorSpace : THREE.SRGBColorSpace;
   return new Promise(res=>{
-    tl.load(url, t=>{ t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=maxAniso; tick(url.split('/').pop()); res(t); },
-      undefined, ()=>{ console.warn('tex fail → procedural',url); tick('procedural'); res(fallback()); });
+    let i=0;
+    const tryNext=()=>{
+      if(i>=CDNS.length){ console.warn('all CDNs failed → procedural',file); tick('procedural');
+        const f=fallback(); f.colorSpace=cs; return res(f); }
+      const url=CDNS[i++]+file;
+      tl.load(url, t=>{ t.colorSpace=cs; t.anisotropy=maxAniso; tick(file); res(t); }, undefined, tryNext);
+    };
+    tryNext();
   });
 }
-function loadLinear(url, fallback){           // data maps must stay linear
-  return new Promise(res=>{
-    tl.load(url, t=>{ t.colorSpace=THREE.NoColorSpace; t.anisotropy=maxAniso; tick(url.split('/').pop()); res(t); },
-      undefined, ()=>{ console.warn('tex fail → procedural',url); tick('procedural'); const f=fallback(); f.colorSpace=THREE.NoColorSpace; res(f); });
-  });
-}
+const load       = (file, fb)=>loadChain(file, fb, false);
+const loadLinear = (file, fb)=>loadChain(file, fb, true);
 // procedural fallbacks
 function procDay(){const c=document.createElement('canvas');c.width=2048;c.height=1024;const x=c.getContext('2d');
   x.fillStyle='#0b3d66';x.fillRect(0,0,2048,1024);x.fillStyle='#1f6b3a';
@@ -569,11 +577,11 @@ function procGray(){const c=document.createElement('canvas');c.width=512;c.heigh
 
 if(lstat) lstat.textContent='STREAMING EARTH IMAGERY…';
 const [dayTex, nightTex, specRaw, cloudTex, topoTex] = await Promise.all([
-  load(TEX+'earth-blue-marble.jpg', procDay),
-  load(TEX+'earth-night.jpg',       procNight),
-  loadLinear(TEX+'earth-water.png', procWhite),
-  load(TEX+'earth-clouds.png',      procClouds),
-  loadLinear(TEX+'earth-topology.png', procGray)
+  load('earth-blue-marble.jpg', procDay),
+  load('earth-night.jpg',       procNight),
+  loadLinear('earth-water.png', procWhite),
+  load('earth-clouds.png',      procClouds),
+  loadLinear('earth-topology.png', procGray)
 ]);
 
 /* derive data maps from real imagery (no extra CDN dependency) */
