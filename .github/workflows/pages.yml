@@ -23,6 +23,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build WebGPU cinematic Earth
+        working-directory: webgpu-earth
+        run: |
+          npm ci
+          npm run build
+      - name: Stage WebGPU build into site (/webgpu)
+        run: |
+          mkdir -p ./webgpu
+          cp -r webgpu-earth/dist/. ./webgpu/
+          # Keep the published artifact lean: drop sources only Pages doesn't serve.
+          rm -rf webgpu-earth/node_modules webgpu-earth/dist
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
