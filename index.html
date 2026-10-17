@@ -46,10 +46,15 @@
   (function () {
     var v = document.getElementById('v'), w = document.getElementById('w');
     v.muted = true; v.defaultMuted = true;
-    function play() { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
-    v.addEventListener('playing', function () { w.classList.add('playing'); });
-    v.addEventListener('error', function () { w.classList.remove('playing'); });   // falha → fica o pôster (KV)
+    function show() { w.classList.add('playing'); }
+    function play() { var p = v.play(); if (p && p.then) p.then(show).catch(function () {}); }
+    v.addEventListener('playing', show);
+    v.addEventListener('timeupdate', function () { if (v.currentTime > 0) show(); });
+    v.addEventListener('loadeddata', play);
+    v.addEventListener('canplay', play);
+    v.addEventListener('error', function () { w.classList.remove('playing'); });   // falha → fica o pôster
     document.addEventListener('visibilitychange', function () { if (!document.hidden) play(); });
+    ['touchstart', 'click'].forEach(function (e) { document.addEventListener(e, play, { once: true }); });   // reforço se o sistema bloquear o autoplay
     play();
   })();
 </script>
