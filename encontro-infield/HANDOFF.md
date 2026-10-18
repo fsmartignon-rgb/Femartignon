@@ -30,6 +30,7 @@ encontro-infield/
 ├─ public/img/agente-icone.*       ícone do menu Mais (SVG + PNG 512)
 ├─ public/img/agente-fundo.webp    arte de fundo do chat (Takeda + assistente, Rio)
 ├─ public/fonts/gotham-bold.otf    Gotham da página do agente
+├─ public/banners/*.webp           banners 1080×1080 do app (pré-evento, 02, 09, 15–19/11 + pós-evento); URLs via jsDelivr
 ├─ api/agente.mjs                  POST /api/agente (Vercel Function)
 ├─ agente/agente.mjs               instruções, validação, chamada ao Claude
 ├─ agente/ferramentas.mjs          clima · trânsito · data e contagem
